@@ -1906,7 +1906,7 @@ function enviarDatos() {
     aperturas_ayuda: APP.ayuda, percentil_habilidad: APP.resultados.perc, duracion_seg: Math.round((Date.now() - APP.t0) / 1000), decision_tip: APP.decisionTip
   };
   APP.ultimoPayload = payload;
-  if (!SHEET_ENDPOINT || SHEET_ENDPOINT.indexOf('PEGA_AQUI') === 0) { console.warn('SHEET_ENDPOINT no configurado: los resultados no se enviarán.'); const e = $('r-envio'); if (e) e.textContent = 'El registro de datos aún no está configurado en este simulador.'; return; }
+  if (!SHEET_ENDPOINT || SHEET_ENDPOINT.indexOf(https://script.google.com/macros/s/AKfycbxbLtURXLSPTmcynosiSjxJKg6D3msVNUwOFURjBPir0PKLvrQFtfpsBQiJ6xJBKBqEmA/exec) === 0) { console.warn('SHEET_ENDPOINT no configurado: los resultados no se enviarán.'); const e = $('r-envio'); if (e) e.textContent = 'El registro de datos aún no está configurado en este simulador.'; return; }
   try { fetch(SHEET_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) }).catch(() => {}); } catch (e) { /* nunca interrumpe el juego */ }
   const e = $('r-envio'); if (e) e.textContent = 'Tus resultados anónimos se enviaron para la investigación. Gracias.';
 }
