@@ -1218,7 +1218,7 @@ if (typeof module !== 'undefined') module.exports = { CONFIG, ASSETS, ASSET, RV,
 
 /* ═══ INTERFAZ — Piso de Remates ═══ */
 // Pega aquí la URL de la NUEVA hoja (Google Apps Script, termina en /exec). Ver guía de despliegue.
-const SHEET_ENDPOINT = 'PEGA_AQUI_TU_URL_DE_APPS_SCRIPT';
+const SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxbLtURXLSPTmcynosiSjxJKg6D3msVNUwOFURjBPir0PKLvrQFtfpsBQiJ6xJBKBqEmA/exec';
 
 const COLORES = { AMX: '#0ea5e9', WALMEX: '#22c55e', GFNORTE: '#dc2626', CEMEX: '#78716c', FEMSA: '#f59e0b', GMEXICO: '#a16207', NAFTRAC: '#4f46e5', IVV: '#2563eb', QQQ: '#7c3aed', GLD: '#ca8a04', CETES28: '#14b8a6', CETES182: '#0d9488', BONOM: '#64748b', EFECTIVO: '#d1d5db' };
 const HUE = { FIN_MX: 228, CON_MX: 140, MAT_MX: 28, INF_MX: 190, TEC_US: 275, SAL_US: 338, CON_US: 88 };
@@ -1906,7 +1906,7 @@ function enviarDatos() {
     aperturas_ayuda: APP.ayuda, percentil_habilidad: APP.resultados.perc, duracion_seg: Math.round((Date.now() - APP.t0) / 1000), decision_tip: APP.decisionTip
   };
   APP.ultimoPayload = payload;
-  if (!SHEET_ENDPOINT || SHEET_ENDPOINT.indexOf(https://script.google.com/macros/s/AKfycbxbLtURXLSPTmcynosiSjxJKg6D3msVNUwOFURjBPir0PKLvrQFtfpsBQiJ6xJBKBqEmA/exec) === 0) { console.warn('SHEET_ENDPOINT no configurado: los resultados no se enviarán.'); const e = $('r-envio'); if (e) e.textContent = 'El registro de datos aún no está configurado en este simulador.'; return; }
+  if (!SHEET_ENDPOINT || SHEET_ENDPOINT.indexOf('PEGA_AQUI') === 0) { console.warn('SHEET_ENDPOINT no configurado: los resultados no se enviarán.'); const e = $('r-envio'); if (e) e.textContent = 'El registro de datos aún no está configurado en este simulador.'; return; }
   try { fetch(SHEET_ENDPOINT, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) }).catch(() => {}); } catch (e) { /* nunca interrumpe el juego */ }
   const e = $('r-envio'); if (e) e.textContent = 'Tus resultados anónimos se enviaron para la investigación. Gracias.';
 }
