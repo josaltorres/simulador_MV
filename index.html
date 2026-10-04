@@ -297,7 +297,7 @@ table.boleta{width:100%;border-collapse:collapse;font-size:15px;}
 
     <h2 style="font-size:22px;letter-spacing:-.01em">¿Cómo vas a jugar?</h2>
     <div class="modes" role="group" aria-label="Modo de juego">
-      <button class="mode" id="m-clase" aria-pressed="false" onclick="elegirModo('clase')"><h3>Partida en clase</h3><p>Tu docente proyecta un código y una clave por jornada. Todo el grupo ve el mismo mercado; tú tocas tu propia campana.</p></button>
+      <button class="mode" id="m-clase" aria-pressed="false" onclick="elegirModo('clase')"><h3>Partida en clase</h3><p>Tu docente proyecta un código para toda la partida. Todo el grupo juega el mismo mercado, a su propio ritmo; tú tocas tu propia campana.</p></button>
       <button class="mode" id="m-practica" aria-pressed="false" onclick="elegirModo('practica')"><h3>Práctica individual</h3><p>Juegas a tu ritmo contra tres inversionistas de referencia.</p></button>
     </div>
     <div class="form-row">
@@ -331,18 +331,6 @@ table.boleta{width:100%;border-collapse:collapse;font-size:15px;}
       </div>
     </div>
     <div class="credit"><b>Dr. José Alfredo Torres Grimaldo®</b><br/>Derechos Reservados · Universidad Autónoma de Tamaulipas · FADYCS</div>
-  </div>
-</section>
-
-<!-- ═══ CLAVE DE LA JORNADA (modo clase) ═══ -->
-<section id="s-clave" class="screen" aria-label="Clave de la jornada">
-  <div class="masthead"><b>Piso de Remates</b><span id="clave-codigo" class="mono"></span><span class="r" id="clave-valor"></span></div>
-  <div class="gate">
-    <h2 id="clave-titulo">Jornada 1 de 15</h2>
-    <p class="dim">Escribe la clave de 5 dígitos que proyecta tu docente para iniciar la jornada.</p>
-    <input id="i-clave" inputmode="numeric" maxlength="5" autocomplete="off" aria-label="Clave de la jornada"/>
-    <div class="err" id="w-clave" role="alert"></div>
-    <button class="btn" onclick="enviarClave()">Iniciar la jornada</button>
   </div>
 </section>
 
@@ -412,7 +400,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
    - Tipo de cambio FIX: Banxico
    Los precios de las emisoras son SIMULADOS (puntos de partida redondos).    */
 const CONFIG = {
-  VERSION: '1.1.0',
+  VERSION: '1.2.0',
   CAPITAL: 1000000,           // capital inicial por jugador (MXN)
   NODOS: 15,                  // 15 jornadas; cada jornada comprime UN MES de mercado
   PASOS: 42,                  // cortes de precio por jornada (2 por día hábil × 21 días)
@@ -530,18 +518,9 @@ const r2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const finite = x => (Number.isFinite(x) ? x : 0);
 
-/* ─── Claves por nodo (modo Clase) ────────────────────────────────────
-   Clave = 3 dígitos + 2 dígitos verificadores. El alumno detecta el 99% de
-   los errores de captura, pero no puede adivinar la clave real del docente. */
-function claveDocente(codigo, pin, n) {
-  const base = String(hash32(codigo + '|' + pin + '|' + n) % 1000).padStart(3, '0');
-  return base + String(hash32(codigo + '|' + n + '|' + base) % 100).padStart(2, '0');
-}
-function claveValida(codigo, n, clave) {
-  if (!/^\d{5}$/.test(clave)) return false;
-  return String(hash32(codigo + '|' + n + '|' + clave.slice(0, 3)) % 100).padStart(2, '0') === clave.slice(3);
-}
-function clavePractica(codigo, n) { return claveDocente(codigo, 'PRACTICA', n); }
+/* ─── Código único de partida (modo Clase) ────────────────────────────
+   Un solo código PR-XXXX define el mercado de las 15 jornadas. La semilla de cada
+   jornada es código + número de jornada: docente y alumnos obtienen lo mismo. */
 
 /* ─── Fórmulas de valuación (verificadas contra cálculo manual) ─────── */
 // CETES: instrumento a descuento, valor nominal $10
@@ -784,8 +763,8 @@ function concretar(ev, rng) {
 }
 
 /* Abre el nodo n: elige evento, aplica el salto de apertura y genera la señal del siguiente mes */
-function abrirNodo(m, n, clave) {
-  const rng = mulberry32(hash32(m.codigo + '|' + clave + '|' + n));
+function abrirNodo(m, n) {
+  const rng = mulberry32(hash32(m.codigo + '|' + n));
   m.n = n;
   let ev;
   if (m.forzado) { ev = EVENTO[m.forzado]; m.forzado = null; if (ev.id === 'opa_cemex' && rng() < 0.5) ev = EVENTO.opa_falla; }
@@ -830,7 +809,7 @@ function abrirNodo(m, n, clave) {
     m.pista = { id: cand.id, p: cand.id === 'crisis' && n + 1 === 13 ? 1 : p };
     senal = { texto: cand.senal, p: Math.round(p * 100) };
   }
-  const nodo = { n, clave, ev, senal, apertura: Object.assign({}, m.p), cierreAnt: prev, rng,
+  const nodo = { n, ev, senal, apertura: Object.assign({}, m.p), cierreAnt: prev, rng,
     entorno: { ipc: m.ipc, fx: m.fx, banx: m.banx, y10: m.y10, infl: m.infl, c28: m.tasas.c28, c182: m.tasas.c182, vol: Math.sqrt(m.v) } };
   return nodo;
 }
@@ -1142,9 +1121,9 @@ function nuevoJuego(codigo, modo) {
   const refs = REFERENCIAS.map(r => Object.assign(nuevoPortafolio(r.nombre), { ref: r }));
   return { codigo, modo, m, jugador, refs, nodo: null, res: null, n: 0, fin: false, inicio: Date.now(), nodos: [] };
 }
-function juegoAbrir(J, clave) {
+function juegoAbrir(J) {
   const n = J.n + 1;
-  J.nodo = abrirNodo(J.m, n, clave);
+  J.nodo = abrirNodo(J.m, n);
   J.n = n; J.sim = null; J.llenados = [];
   const ap = aperturaPortafolio(J.jugador, J.m, n);
   J.refs.forEach(r => { aperturaPortafolio(r, J.m, n); if (n === 1) rebalancear(r, J.m, n, r.ref.objetivo); });
@@ -1233,7 +1212,7 @@ function percentilHabilidad(pf, N, semillaBase) {
 function fmt(x) { try { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(finite(x)); } catch (e) { return '$' + finite(x).toFixed(2); } }
 
 if (typeof module !== 'undefined') module.exports = { CONFIG, ASSETS, ASSET, RV, SECTOR, esAccion, enDolares, concretar, iniciarSesion, pasoSesion, finalizarSesion, juegoIniciarSesion, juegoPaso, revisarLimitesPaso, EVENTOS, EVENTO, hash32, mulberry32, gauss, r2, precioCetes, precioBonoM, duracionModificada, costoOperacion,
-  claveDocente, claveValida, clavePractica, nuevoMercado, abrirNodo, simularMes, nuevoPortafolio, cotiza, valorTotal, valorPos, cantidad, cotizarOrden, ejecutarMercado,
+  nuevoMercado, abrirNodo, simularMes, nuevoPortafolio, cotiza, valorTotal, valorPos, cantidad, cotizarOrden, ejecutarMercado,
   colocarLimite, cancelarOrden, aperturaPortafolio, cierrePortafolio, rebalancear, REFERENCIAS, nuevoJuego, juegoAbrir, juegoCerrar, metricas, caidaMaxima,
   percentilHabilidad, escenarioAlternativo, faseDe, efectivoReservado, fmt, limiteDe };
 
@@ -1405,27 +1384,13 @@ function iniciar() {
   APP = Object.assign(APP, { codigo, edad: edad || null, sexo: sexo || null, consent, J: nuevoJuego(codigo, APP.modo), panico: 0, limColocadas: 0, ayuda: 0, decisionTip: 'no_aplica', tipCompra: null, enviado: false, sesion: uid(), t0: Date.now(), pausas: 0, calidad: { suma: 0, peso: 0 }, ventasCaidaVivo: 0, comprasAlzaVivo: 0, fase: 'pre', pausado: false });
   siguienteMes();
 }
-function siguienteMes() {
-  const n = APP.J.n + 1;
-  if (APP.modo === 'clase') {
-    $('clave-titulo').textContent = 'Jornada ' + n + ' de ' + CONFIG.NODOS;
-    $('clave-codigo').textContent = APP.codigo;
-    $('clave-valor').textContent = n > 1 ? 'Tu portafolio: ' + fmt(valorTotal(APP.J.jugador, APP.J.m, n)) : '';
-    $('i-clave').value = ''; $('w-clave').textContent = '';
-    show('s-clave'); setTimeout(() => $('i-clave').focus(), 50);
-  } else abrirMes(clavePractica(APP.codigo, n));
-}
-function enviarClave() {
-  const k = $('i-clave').value.trim(), n = APP.J.n + 1;
-  if (!claveValida(APP.codigo, n, k)) { $('w-clave').textContent = 'Esa clave no corresponde a la jornada ' + n + ' de esta partida. Revisa los 5 dígitos.'; return; }
-  abrirMes(k);
-}
+function siguienteMes() { abrirMes(); }
 
 /* ─── JORNADA: preapertura → apertura → sesión en vivo → cierre ─── */
 function pasoMs() { return CONFIG.SESION_SEG * 1000 / CONFIG.PASOS; }
-function abrirMes(clave) {
+function abrirMes() {
   const J = APP.J, P = J.jugador;
-  const ap = juegoAbrir(J, clave);
+  const ap = juegoAbrir(J);
   const ult = J.nodos.length ? J.nodos[J.nodos.length - 1] : null;
   APP.cambioIPCprev = ult ? ult.ipcCi / ult.ipcPrev - 1 : 0;
   APP.gapIPC = J.nodo.entorno.ipc / (ult ? ult.ipcCi : CONFIG.IPC0) - 1;
@@ -1951,38 +1916,37 @@ let DOC = null;
 function docenteInicio() {
   show('s-docente');
   let guardado = null; try { guardado = JSON.parse(localStorage.getItem('pdr_docente') || 'null'); } catch (e) {}
-  $('d-body').innerHTML = '<div class="hero" style="padding-top:36px"><h1 style="font-size:clamp(2rem,6vw,3.4rem)">Panel docente</h1><p>Crea una partida, proyecta el código y libera una clave al inicio de cada jornada. Todo el grupo verá el mismo mercado y cada alumno toca su propia campana de apertura.</p></div>' +
-    '<div class="form-row"><label class="field"><span>PIN privado (solo tú lo conoces)</span><input id="d-pin" inputmode="numeric" maxlength="8" placeholder="Ej. 4821" value="' + (guardado ? guardado.pin : '') + '"/></label><label class="field"><span>Código (vacío = nuevo)</span><input id="d-cod" class="mono" maxlength="7" style="text-transform:uppercase" value="' + (guardado ? guardado.codigo : '') + '"/></label></div>' +
+  $('d-body').innerHTML = '<div class="hero" style="padding-top:36px"><h1 style="font-size:clamp(2rem,6vw,3.4rem)">Panel docente</h1><p>Crea una partida y proyecta un solo código: sirve para las 15 jornadas. Todo el grupo juega el mismo mercado, cada alumno a su propio ritmo y tocando su propia campana.</p></div>' +
+    '<div class="form-row"><label class="field"><span>Código (vacío = mercado nuevo)</span><input id="d-cod" class="mono" maxlength="7" style="text-transform:uppercase" value="' + (guardado ? guardado.codigo : '') + '"/></label></div>' +
     '<div class="warn" id="d-w"></div><button class="btn" onclick="docenteCrear()">' + (guardado ? 'Continuar la partida' : 'Crear partida') + '</button>' +
-    '<p class="dim" style="margin-top:14px;max-width:640px">El PIN y el código generan las claves de las 15 jornadas. La sesión en vivo dura ' + CONFIG.SESION_SEG + ' s (agrega ?seg=60 al enlace de los alumnos para cambiarla). Si recargas esta página, escribe el mismo PIN y código para recuperarlas.</p>';
+    '<p class="dim" style="margin-top:14px;max-width:640px">El código define el mercado completo. Si lo reutilizas con otro grupo, ambos jugarán exactamente el mismo mercado. La sesión en vivo dura ' + CONFIG.SESION_SEG + ' s (agrega ?seg=60 al enlace de los alumnos para cambiarla).</p>';
 }
 function docenteCrear() {
-  const pin = $('d-pin').value.trim(); let cod = $('d-cod').value.trim().toUpperCase();
-  if (!/^\d{4,8}$/.test(pin)) { $('d-w').textContent = 'El PIN debe tener de 4 a 8 dígitos.'; return; }
+  let cod = $('d-cod').value.trim().toUpperCase();
   if (!cod) cod = nuevoCodigo();
   if (!/^PR-[A-Z0-9]{4}$/.test(cod)) { $('d-w').textContent = 'El código tiene el formato PR-XXXX.'; return; }
-  let mes = 0; try { const g = JSON.parse(localStorage.getItem('pdr_docente') || 'null'); if (g && g.codigo === cod && g.pin === pin) mes = g.mes || 0; } catch (e) {}
-  DOC = { pin, codigo: cod, m: nuevoMercado(cod), mes: 0, nodo: null };
+  let mes = 0; try { const g = JSON.parse(localStorage.getItem('pdr_docente') || 'null'); if (g && g.codigo === cod) mes = g.mes || 0; } catch (e) {}
+  DOC = { codigo: cod, m: nuevoMercado(cod), mes: 0, nodo: null };
   for (let i = 1; i <= mes; i++) docenteAvanzar(true);
   docenteRender();
 }
-function docenteGuardar() { try { localStorage.setItem('pdr_docente', JSON.stringify({ pin: DOC.pin, codigo: DOC.codigo, mes: DOC.mes })); } catch (e) {} }
+function docenteGuardar() { try { localStorage.setItem('pdr_docente', JSON.stringify({ codigo: DOC.codigo, mes: DOC.mes })); } catch (e) {} }
 function docenteAvanzar(silencio) {
   if (DOC.mes >= CONFIG.NODOS) return;
   if (DOC.nodo && !DOC.cerrado) { simularMes(DOC.m, DOC.nodo); }
-  DOC.mes++; DOC.nodo = abrirNodo(DOC.m, DOC.mes, claveDocente(DOC.codigo, DOC.pin, DOC.mes)); DOC.cerrado = false; DOC.verNoticia = false;
+  DOC.mes++; DOC.nodo = abrirNodo(DOC.m, DOC.mes); DOC.cerrado = false; DOC.verNoticia = false;
   if (!silencio) { docenteGuardar(); docenteRender(); }
 }
 function docenteRender() {
   const url = location.origin + location.pathname + '?c=' + DOC.codigo;
   let qr = ''; try { const q = qrcode(0, 'M'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); } catch (e) { qr = '<p class="dim">No se pudo generar el QR.</p>'; }
   let h = '<div class="doc-grid"><div class="qr">' + qr + '</div><div><p class="dim">Código de partida</p><div class="doc-code">' + DOC.codigo + '</div><p class="dim mono" style="word-break:break-all;font-size:14px">' + url + '</p></div></div>';
-  if (DOC.mes === 0) h += '<p style="font-size:18px">Cuando todo el grupo haya entrado con el código, libera la primera jornada.</p><button class="btn" onclick="docenteAvanzar()">Liberar la jornada 1</button>';
+  h += '<p style="font-size:17px;max-width:680px">Los alumnos entran con este código y avanzan solos de la jornada 1 a la 15. Para comentar el mercado en clase, usa las noticias de abajo: son las mismas que verá cada alumno al abrir esa jornada.</p>';
+  if (DOC.mes === 0) h += '<button class="btn" onclick="docenteAvanzar()">Ver la noticia de la jornada 1</button>';
   else {
-    h += '<div class="card"><p class="dim">Clave de la jornada ' + DOC.mes + ' de ' + CONFIG.NODOS + ' · ' + faseTxt(DOC.mes) + '</p><div class="doc-clave">' + claveDocente(DOC.codigo, DOC.pin, DOC.mes) + '</div></div>';
-    h += '<div class="card news">' + (DOC.verNoticia ? '<h3>' + DOC.nodo.ev.titulo + '</h3><p>' + DOC.nodo.ev.noticia + '</p><div class="concept"><b>Concepto para discutir al cierre</b>' + DOC.nodo.ev.concepto + '</div>' : '<button class="btn ghost" onclick="DOC.verNoticia=true;docenteRender()">Mostrar la noticia de la jornada en pantalla</button>') + '</div>';
-    if (DOC.mes > 1) h += '<p class="dim" style="margin:-8px 0 16px">Claves anteriores para quien vaya atrasado: ' + Array.from({ length: DOC.mes - 1 }, (_, i) => 'jornada ' + (i + 1) + ': <b class="mono">' + claveDocente(DOC.codigo, DOC.pin, i + 1) + '</b>').join(' · ') + '</p>';
-    h += DOC.mes < CONFIG.NODOS ? '<button class="btn" onclick="docenteAvanzar()">Liberar la jornada ' + (DOC.mes + 1) + '</button>' : '<p style="font-size:18px">Fue la última jornada. Cuando el grupo termine, muestra el podio.</p>';
+    h += '<div class="card"><p class="dim">Jornada ' + DOC.mes + ' de ' + CONFIG.NODOS + ' · ' + faseTxt(DOC.mes) + '</p></div>';
+    h += '<div class="card news"><h3>' + DOC.nodo.ev.titulo + '</h3><p>' + DOC.nodo.ev.noticia + '</p><div class="concept"><b>Concepto para discutir al cierre</b>' + DOC.nodo.ev.concepto + '</div></div>';
+    h += DOC.mes < CONFIG.NODOS ? '<button class="btn" onclick="docenteAvanzar()">Ver la noticia de la jornada ' + (DOC.mes + 1) + '</button>' : '<p style="font-size:18px">Fue la última jornada. Cuando el grupo termine, muestra el podio.</p>';
   }
   h += '<div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap"><button class="btn ghost" onclick="docentePodio()">Ver podio del grupo</button><button class="btn ghost" onclick="if(confirm(\'¿Terminar esta partida y crear otra?\')){try{localStorage.removeItem(\'pdr_docente\')}catch(e){};docenteInicio()}">Nueva partida</button></div><div id="d-podio" style="margin:20px 0 60px"></div>';
   $('d-body').innerHTML = h;
@@ -2008,7 +1972,6 @@ function docentePodio() {
   const qs = new URLSearchParams(location.search);
   if (qs.has('docente')) { docenteInicio(); return; }
   if (qs.get('c')) { elegirModo('clase'); $('i-codigo').value = qs.get('c').toUpperCase(); }
-  $('i-clave').addEventListener('keydown', e => { if (e.key === 'Enter') enviarClave(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') ['ov-ticket', 'ov-ayuda'].forEach(closeOv); });
   window.addEventListener('beforeunload', e => { if (APP.J && !APP.J.fin && APP.J.n > 0) { e.preventDefault(); e.returnValue = ''; } });
 })();
