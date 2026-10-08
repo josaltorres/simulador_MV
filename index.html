@@ -285,13 +285,13 @@ table.boleta{width:100%;border-collapse:collapse;font-size:15px;}
   <div class="tape"><div aria-hidden="true"><div class="tape-inner" id="tape-intro"></div></div><button type="button" class="tape-btn" onclick="cintaPausa(this)" aria-pressed="false" aria-label="Detener el desplazamiento de la cinta">⏸ Cinta</button></div>
   <div class="wrap">
     <div class="hero">
-      <h1>Piso de Remates<span class="sub">Invierte un millón de pesos durante 15 jornadas de mercado</span></h1>
+      <h1>Piso de Remates<span class="sub">Invierte un millón de pesos durante 6 jornadas de mercado</span></h1>
       <p>Cada jornada trae una noticia que mueve los precios, y una sesión en vivo donde la cinta se mueve sola. Tú decides qué comprar, qué vender y cuándo protegerte. Al final se premia a quien más creció, y también a quien creció mejor.</p>
     </div>
     <div class="board">
       <div><span class="k">Capital inicial</span><div class="v">$1,000,000</div></div>
-      <div><span class="k">Jornadas</span><div class="v">15 (1 jornada = 1 mes)</div></div>
-      <div><span class="k">Instrumentos</span><div class="v">42</div></div>
+      <div><span class="k">Jornadas</span><div class="v">6 (1 jornada = 1 mes)</div></div>
+      <div><span class="k">Instrumentos</span><div class="v">45</div></div>
       <div><span class="k">Máximo por emisora</span><div class="v">20%</div></div>
     </div>
 
@@ -337,7 +337,7 @@ table.boleta{width:100%;border-collapse:collapse;font-size:15px;}
 <!-- ═══ JUEGO ═══ -->
 <section id="s-juego" class="screen" aria-label="Jornada de mercado">
   <div class="gbar"><div class="gbar-in">
-    <div><div class="mes" id="g-mes">Jornada 1 de 15</div><div class="fase" id="g-fase"></div></div>
+    <div><div class="mes" id="g-mes">Jornada 1 de 6</div><div class="fase" id="g-fase"></div></div>
     <div class="kv"><span class="k">Tu portafolio</span><span class="v" id="g-valor"></span></div>
     <div class="kv"><span class="k">Rendimiento</span><span class="v" id="g-rend"></span></div>
     <div class="kv"><span class="k">Efectivo disponible</span><span class="v" id="g-efectivo"></span></div>
@@ -400,29 +400,42 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
    - Tipo de cambio FIX: Banxico
    Los precios de las emisoras son SIMULADOS (puntos de partida redondos).    */
 const CONFIG = {
-  VERSION: '1.2.0',
+  VERSION: '1.3.0',
   CAPITAL: 1000000,           // capital inicial por jugador (MXN)
-  NODOS: 15,                  // 15 jornadas; cada jornada comprime UN MES de mercado
+  NODOS: 6,                   // 6 jornadas (un semestre); cada jornada comprime UN MES de mercado
+  CRISIS_N: 4,                // jornada ancla de la crisis (la señal se ve en la jornada anterior)
+  REBOTE_N: 6,                // jornada ancla del rebote (la señal se ve en la jornada anterior)
+  DIST_CADA: 3,               // las FIBRAs distribuyen cada 3 jornadas (trimestral): jornadas 3 y 6
   PASOS: 42,                  // cortes de precio por jornada (2 por día hábil × 21 días)
   SESION_SEG: 90,             // duración de la sesión en vivo, en segundos (configurable: ?seg=60 en la URL)
   // Factor sectorial: r_i = β_i·r_mercado + γ_i·r_sector + ε_i  [Supuesto: volatilidades sectoriales anuales típicas]
   // mu = deriva anual de CALIBRACIÓN: compensa el sesgo neto de las noticias del catálogo (que no son simétricas por sector)
   // para que concentrarse en un sector NO tenga alfa sistemático (ni positivo ni negativo): solo más riesgo.
-  // Calibrada con calib_sec.js (400 partidas): el rendimiento medio de cada sector queda cerca del que justifica su beta.
+  // Calibrada con calib13.js (4,000 partidas, semestre de 6 jornadas): el rendimiento medio de cada sector, desde el precio al que compra el jugador (tras el salto de apertura de la J1), queda en rf + β·(Rm − rf).
+  // El sector inmobiliario se calibra sobre el rendimiento TOTAL (precio + distribuciones), por eso su mu es negativa.
   SECTORES: [
-    { id: 'FIN_MX', n: 'Financiero',                          mercado: 'MX', vol: 0.12, mu: 0.042 },
-    { id: 'CON_MX', n: 'Consumo',                             mercado: 'MX', vol: 0.08, mu: 0.034 },
-    { id: 'MAT_MX', n: 'Materiales e industria',              mercado: 'MX', vol: 0.14, mu: -0.012 },
-    { id: 'INF_MX', n: 'Infraestructura y telecomunicaciones', mercado: 'MX', vol: 0.10, mu: 0.0 },
-    { id: 'TEC_US', n: 'Tecnología',                          mercado: 'US', vol: 0.15, mu: 0.002 },
-    { id: 'SAL_US', n: 'Salud',                               mercado: 'US', vol: 0.10, mu: 0.011 },
-    { id: 'CON_US', n: 'Consumo básico',                      mercado: 'US', vol: 0.07, mu: -0.009 }
+    { id: 'FIN_MX', n: 'Financiero',                          mercado: 'MX', vol: 0.12, mu: 0.0679 },
+    { id: 'CON_MX', n: 'Consumo',                             mercado: 'MX', vol: 0.08, mu: 0.0193 },
+    { id: 'MAT_MX', n: 'Materiales e industria',              mercado: 'MX', vol: 0.14, mu: -0.0159 },
+    { id: 'INF_MX', n: 'Infraestructura y telecomunicaciones', mercado: 'MX', vol: 0.10, mu: 0.0090 },
+    { id: 'INM_MX', n: 'Inmobiliario (FIBRAs)',                mercado: 'MX', vol: 0.09, mu: -0.0415 },
+    { id: 'TEC_US', n: 'Tecnología',                          mercado: 'US', vol: 0.15, mu: -0.0419 },
+    { id: 'SAL_US', n: 'Salud',                               mercado: 'US', vol: 0.10, mu: -0.0073 },
+    { id: 'CON_US', n: 'Consumo básico',                      mercado: 'US', vol: 0.07, mu: -0.0241 }
   ],
   FASES: [                    // regímenes del ciclo económico
-    { id: 1, nombre: 'Recuperación',       desde: 1,  hasta: 5,  mu: 0.20,  vol: 0.14 },
-    { id: 2, nombre: 'Sobrecalentamiento', desde: 6,  hasta: 10, mu: 0.16,  vol: 0.18 },
-    { id: 3, nombre: 'Crisis y rebote',    desde: 11, hasta: 15, mu: 0.20, vol: 0.25 }
+    { id: 1, nombre: 'Recuperación',       desde: 1,  hasta: 1, mu: 0.17,  vol: 0.14 },
+    { id: 2, nombre: 'Sobrecalentamiento', desde: 2,  hasta: 3, mu: 0.13,  vol: 0.18 },
+    { id: 3, nombre: 'Crisis y rebote',    desde: 4,  hasta: 6, mu: 0.17, vol: 0.25 }
   ],
+  // Guion semestral: bolsa de eventos por jornada (pesos relativos). J4 = crisis y J6 = rebote son anclas fijas.
+  // J5 parte de la señal de la crisis (recorte de emergencia con prob. 65%); si no ocurre, se sortea de esta bolsa.
+  GUION: {
+    1: { banx_recorte: 3, rep_pos_mx: 2.5, nearshoring: 2, remesas: 1.5, fibra_ocup: 1.5 },
+    2: { tech_boom: 3, rep_pos_us: 1.5, rep_pos_mx: 1.5, rep_neg_mx: 1, rumor: 1.5, nearshoring: 1, tip: 1 },
+    3: { inflacion: 3, banx_alza: 2.5, fed_alza: 2, aranceles: 2, morosidad: 1 },
+    5: { recesion: 2, morosidad: 1, aranceles: 1, fibra_vacancia: 1, rep_neg_us: 0.8, calma: 0.5 }
+  },
   // Heston (1993): dv = κ(θ−v)dt + ξ√v dW₂ ; corr(dW₁,dW₂)=ρ  [Supuesto: valores típicos de la literatura]
   HESTON: { kappa: 4.0, xi: 0.5, rho: -0.7, v0: 0.14 * 0.14, vMin: 0.0025, vMax: 1.0 },
   IPC0: 55000,                // nivel inicial del S&P/BMV IPC [Supuesto]
@@ -435,7 +448,7 @@ const CONFIG = {
   FX0: 18.50,                 // USD/MXN inicial [Supuesto]
   SIGMA_FX: 0.11, RHO_FX: -0.5,
   US: { mu: 0.12, volRel: 0.85, rho: 0.6, nivel0: 6500 },
-  ORO: { mu: 0.04, vol: 0.15, rho: -0.1 },
+  ORO: { mu: -0.03, vol: 0.15, rho: -0.1 },   // mu calibrada con calib_oro.js: el oro (β = 0) rinde ≈ CETES en el semestre; protege en la crisis, pero no regala rendimiento
   COMISION: 0.0025,           // comisión de casa de bolsa en línea [Supuesto: rango típico]
   IVA: 0.16,                  // IVA sobre la comisión (LIVA)
   LIMITE_EMISORA: 0.20,       // máximo por emisora individual (México o EE.UU.); no hay límite por sector: lo enseña el indicador ⑥
@@ -470,6 +483,12 @@ const ASSETS = [
   { c: 'GAP',     n: 'Grupo Aeroportuario del Pacífico', t: 'accion', sector: 'INF_MX', p0: 340, beta: 1.0, gam: 1.0, idio: 0.20, hs: 0.0006 },
   { c: 'OMA',     n: 'Grupo Aeroportuario Centro Norte', t: 'accion', sector: 'INF_MX', p0: 190, beta: 1.0, gam: 1.0, idio: 0.20, hs: 0.0007 },
   { c: 'PINFRA',  n: 'Promotora y Operadora de Infraestructura', t: 'accion', sector: 'INF_MX', p0: 200, beta: 0.7, gam: 0.8, idio: 0.18, hs: 0.0008 },
+  // ── FIBRAs (CBFI) · precios y distribuciones SIMULADOS; dist = distribución trimestral en MXN por título ──
+  // [Supuesto: montos redondos con base en distribuciones recientes publicadas (p. ej. DANHOS13: $0.45 por CBFI por trimestre en 2025-2026).
+  //  Verificar emisoras vigentes y montos antes de cada semestre.]
+  { c: 'FUNO11',   n: 'Fibra Uno (FUNO)',        t: 'accion', sector: 'INM_MX', p0: 25, beta: 0.8, gam: 1.0, idio: 0.20, hs: 0.0008, dist: 0.40, fibra: true },
+  { c: 'DANHOS13', n: 'Fibra Danhos',            t: 'accion', sector: 'INM_MX', p0: 24, beta: 0.7, gam: 1.0, idio: 0.22, hs: 0.0009, dist: 0.45, fibra: true },
+  { c: 'FIBRAPL14',n: 'Fibra Prologis (industrial)', t: 'accion', sector: 'INM_MX', p0: 55, beta: 0.7, gam: 1.0, idio: 0.20, hs: 0.0009, dist: 0.75, fibra: true },
   // ── Estados Unidos vía SIC · precios simulados en USD, se operan en MXN al tipo de cambio ──
   { c: 'AAPL',  n: 'Apple',                 t: 'accionusd', sector: 'TEC_US', usd0: 230, beta: 1.2, gam: 1.0, idio: 0.20, hs: 0.0008 },
   { c: 'MSFT',  n: 'Microsoft',             t: 'accionusd', sector: 'TEC_US', usd0: 450, beta: 1.1, gam: 1.0, idio: 0.18, hs: 0.0008 },
@@ -616,6 +635,16 @@ const EVENTOS = [
     concepto: 'ASUR, GAP y OMA comparten el mismo motor de negocio: por eso se mueven juntos. Una noticia sectorial golpea o premia a todo el sector a la vez.',
     actores: ['Emisora', 'BMV (evento relevante)'], sect: { INF_MX: 0.02 }, asset: { ASUR: 0.03, GAP: 0.03, OMA: 0.03 },
     senal: 'Se anticipa una temporada vacacional muy fuerte.', p: 0.55 },
+  { id: 'fibra_ocup', w: [1.5, 1, 0.3], titulo: 'Ocupación industrial en máximos',
+    noticia: 'Las FIBRAs industriales reportan ocupación récord y rentas al alza por la relocalización de empresas.',
+    concepto: 'El valor de una FIBRA depende de sus rentas y de su ocupación, pero también de las tasas: comprar una FIBRA no es comprar "una casa", es comprar un flujo de rentas que se distribuye cada trimestre. Los sectores industrial, comercial y de oficinas no se comportan igual.',
+    actores: ['FIBRAs', 'BMV (evento relevante)'], sect: { INM_MX: 0.02 }, asset: { FIBRAPL14: 0.03 },
+    senal: 'Los reportes de ocupación industrial apuntan a un trimestre fuerte.', p: 0.55 },
+  { id: 'fibra_vacancia', w: [0.6, 1, 1], titulo: 'Sube la vacancia en oficinas y comercio',
+    noticia: 'Las FIBRAs de oficinas y centros comerciales reportan más espacios vacíos y renegociación de rentas a la baja.',
+    concepto: 'La distribución depende de las rentas cobradas: si la vacancia sube, el flujo baja y el precio también. No todas las FIBRAs son iguales: el tipo de inmueble importa.',
+    actores: ['FIBRAs', 'BMV (evento relevante)'], sect: { INM_MX: -0.02 }, asset: { DANHOS13: -0.03 },
+    senal: 'Aumentan los espacios de oficina disponibles en la ciudad.', p: 0.5 },
   { id: 'tech_correccion', w: [0.5, 1.5, 1], titulo: 'Corrección en las tecnológicas',
     noticia: 'Las acciones tecnológicas caen ante dudas sobre la rentabilidad de sus inversiones en inteligencia artificial.',
     concepto: 'Lo que más sube en una euforia también puede caer más. Cinco tecnológicas no son cinco apuestas distintas: comparten el mismo riesgo sectorial.',
@@ -707,6 +736,11 @@ const EVENTOS = [
     senal: 'Se filtran reportes de un posible paquete de estímulo global.', p: 0.6 }
 ];
 const EVENTO = Object.fromEntries(EVENTOS.map(e => [e.id, e]));
+// Sensibilidad del sector inmobiliario (FIBRAs) a las tasas y al ciclo: se agrega sin alterar el catálogo base.
+// Lógica: una FIBRA se valúa como un flujo de rentas; si suben las tasas exigidas, su precio baja (y al revés).
+const SECT_INM = { banx_recorte: 0.02, inflacion: -0.01, banx_alza: -0.03, fed_alza: -0.015, crisis: -0.03, recesion: -0.01, banx_emerg: 0.04, rebote: 0.015, nearshoring: 0.015 };
+Object.keys(SECT_INM).forEach(id => { const e = EVENTO[id]; e.sect = Object.assign({}, e.sect, { INM_MX: SECT_INM[id] }); });
+EVENTO.nearshoring.asset = Object.assign({}, EVENTO.nearshoring.asset, { FIBRAPL14: 0.02 });
 
 function faseDe(n) { return CONFIG.FASES.find(f => n >= f.desde && n <= f.hasta) || CONFIG.FASES[2]; }
 
@@ -735,9 +769,9 @@ function actualizarDerivados(m, tAnios) { // precios en pesos de activos en dól
 }
 
 function pesosFase(m, n) {
-  const f = faseDe(n).id - 1;
+  const f = faseDe(n).id - 1, g = CONFIG.GUION && CONFIG.GUION[n];
   return EVENTOS.map(e => {
-    let w = e.w[f];
+    let w = g ? (g[e.id] || 0) : e.w[f];
     if (e.cond && !e.cond(m)) w = 0;
     return w;
   });
@@ -768,7 +802,8 @@ function abrirNodo(m, n) {
   m.n = n;
   let ev;
   if (m.forzado) { ev = EVENTO[m.forzado]; m.forzado = null; if (ev.id === 'opa_cemex' && rng() < 0.5) ev = EVENTO.opa_falla; }
-  else if (faseDe(n).id === 3 && !m.crisis && n === 13) ev = EVENTO.crisis;              // ancla del ciclo
+  else if (n === CONFIG.CRISIS_N && !m.crisis) ev = EVENTO.crisis;                         // ancla del ciclo
+  else if (n === CONFIG.REBOTE_N && m.crisis) ev = EVENTO.rebote;                          // ancla del rebote
   else if (m.pista && rng() < m.pista.p && (!EVENTO[m.pista.id].cond || EVENTO[m.pista.id].cond(m))) ev = EVENTO[m.pista.id];
   else ev = sortear(rng, pesosFase(m, n), m.pista ? m.pista.id : null);
   ev = concretar(ev, rng);
@@ -802,11 +837,13 @@ function abrirNodo(m, n) {
   if (ev.siguiente) { m.forzado = ev.siguiente; }
   else if (n < CONFIG.NODOS) {
     let cand;
-    if (faseDe(n + 1).id === 3 && !m.crisis && n + 1 === 13) cand = EVENTO.crisis;
+    if (n + 1 === CONFIG.CRISIS_N && !m.crisis) cand = EVENTO.crisis;
+    else if (n + 1 === CONFIG.REBOTE_N && m.crisis) cand = EVENTO.rebote;
     else if (ev.pista && (!EVENTO[ev.pista].cond || EVENTO[ev.pista].cond(m))) cand = EVENTO[ev.pista];
     else cand = sortear(rng, pesosFase(m, n + 1), ev.id);
-    const p = cand.id === 'crisis' && n + 1 === 13 ? 0.85 : cand.p;
-    m.pista = { id: cand.id, p: cand.id === 'crisis' && n + 1 === 13 ? 1 : p };
+    const ancla = (cand.id === 'crisis' && n + 1 === CONFIG.CRISIS_N) || (cand.id === 'rebote' && n + 1 === CONFIG.REBOTE_N);
+    const p = ancla ? 0.85 : cand.p;
+    m.pista = { id: cand.id, p: ancla ? 1 : p };
     senal = { texto: cand.senal, p: Math.round(p * 100) };
   }
   const nodo = { n, ev, senal, apertura: Object.assign({}, m.p), cierreAnt: prev, rng,
@@ -879,7 +916,7 @@ function simularMes(m, nodo, pasos) { const S = iniciarSesion(m, nodo, pasos); r
 function nuevoPortafolio(nombre) {
   return { nombre, efectivo: CONFIG.CAPITAL, pos: {}, lotes28: [], lotes182: [], ordenes: [], sigOrden: 1,
     costos: { com: 0, iva: 0, dif: 0 }, ops: [], valores: [CONFIG.CAPITAL], pesos: [], reinvertir28: true,
-    pendiente28: 0, eventos: [], decisionTip: null, sancion: 0, cupones: 0, ayuda: 0 };
+    pendiente28: 0, eventos: [], decisionTip: null, sancion: 0, cupones: 0, distrib: 0, ddSerie: [CONFIG.CAPITAL], ayuda: 0 };
 }
 function cotiza(m, c) {
   const a = ASSET[c], mid = m.p[c];
@@ -1071,8 +1108,16 @@ function cierrePortafolio(pf, m, n, res, llenados) {
     const cupon = r2(pf.pos.BONOM.qty * CONFIG.BONO.cupon / 2);
     pf.efectivo = r2(pf.efectivo + cupon); pf.cupones += cupon; out.cupon = cupon;
   }
+  // Distribución trimestral de las FIBRAs (jornadas 3 y 6): efectivo por título, no cambia el precio
+  if (n % CONFIG.DIST_CADA === 0) {
+    const det = {}; let d = 0;
+    ASSETS.forEach(a => { if (a.dist && pf.pos[a.c] && pf.pos[a.c].qty > 0) { const x = r2(pf.pos[a.c].qty * a.dist); det[a.c] = x; d += x; } });
+    d = r2(d);
+    if (d > 0) { pf.efectivo = r2(pf.efectivo + d); pf.distrib = r2((pf.distrib || 0) + d); out.distrib = d; out.distribDet = det; }
+  }
   const V = valorTotal(pf, m, n); // al cierre m.f = 1: ya transcurrió el mes completo
   pf.valores.push(V);
+  if (pf.ddSerie) pf.ddSerie.push(V);
   const w = {}; let inv = 0;
   ASSETS.forEach(a => { const x = valorPos(pf, m, a.c, n); if (x > 0) { w[a.c] = x / V; inv += x; } });
   w.EFECTIVO = pf.efectivo / V;
@@ -1127,6 +1172,7 @@ function juegoAbrir(J) {
   J.n = n; J.sim = null; J.llenados = [];
   const ap = aperturaPortafolio(J.jugador, J.m, n);
   J.refs.forEach(r => { aperturaPortafolio(r, J.m, n); if (n === 1) rebalancear(r, J.m, n, r.ref.objetivo); });
+  [J.jugador].concat(J.refs).forEach(p => { if (p.ddSerie) p.ddSerie.push(valorTotal(p, J.m, n)); }); // valor tras el salto de apertura
   return ap;
 }
 /* Sesión en vivo: el jugador opera al precio de cada paso; sus órdenes límite se revisan paso a paso */
@@ -1159,7 +1205,7 @@ function caidaMaxima(vals) {
 function metricas(pf, cetesPf) {
   const V = pf.valores, R = V[V.length - 1] / V[0] - 1;
   const Rf = cetesPf.valores[cetesPf.valores.length - 1] / cetesPf.valores[0] - 1;
-  const dd = caidaMaxima(V);
+  const dd = caidaMaxima(pf.ddSerie && pf.ddSerie.length > V.length ? pf.ddSerie : V); // apertura y cierre de cada jornada
   const nefs = pf.pesos.map(w => { const xs = Object.keys(w).filter(k => k !== 'EFECTIVO').map(k => w[k]); const tot = xs.reduce((a, b) => a + b, 0); if (tot <= 0) return 0; return 1 / xs.reduce((s, x) => s + (x / tot) ** 2, 0); });
   const nef = nefs.length ? nefs.reduce((a, b) => a + b, 0) / nefs.length : 0;
   const costos = (pf.costos.com + pf.costos.iva + pf.costos.dif) / CONFIG.CAPITAL;
@@ -1187,7 +1233,7 @@ function escenarioAlternativo(semilla) {
     ASSETS.forEach(a => {
       if (a.c === 'CETES28') ret[a.c] = (1 + (nodo.entorno.c28 / 100) * 28 / 360) - 1;
       else if (a.c === 'CETES182') ret[a.c] = (1 + (nodo.entorno.c182 / 100) * CONFIG.DIAS_MES / 360) - 1;
-      else ret[a.c] = r.cierre[a.c] / prev[a.c] - 1 + (a.c === 'BONOM' && n % 6 === 0 ? (CONFIG.BONO.cupon / 2) / prev[a.c] : 0);
+      else ret[a.c] = r.cierre[a.c] / prev[a.c] - 1 + (a.c === 'BONOM' && n % 6 === 0 ? (CONFIG.BONO.cupon / 2) / prev[a.c] : 0) + (a.dist && n % CONFIG.DIST_CADA === 0 ? a.dist / prev[a.c] : 0);
     });
     out.push(ret);
   }
@@ -1228,7 +1274,7 @@ function color(c) {
   return COLORES[c] || '#94a3b8';
 }
 const MERCADOS = [
-  { id: 'MX', n: 'México (BMV)', sec: ['FIN_MX', 'CON_MX', 'MAT_MX', 'INF_MX'] },
+  { id: 'MX', n: 'México (BMV)', sec: ['FIN_MX', 'CON_MX', 'MAT_MX', 'INF_MX', 'INM_MX'] },
   { id: 'US', n: 'EE.UU. (SIC)', sec: ['TEC_US', 'SAL_US', 'CON_US'] },
   { id: 'ETF', n: 'ETF', lista: ['NAFTRAC', 'IVV', 'QQQ', 'GLD'] },
   { id: 'DEU', n: 'Deuda', lista: ['CETES28', 'CETES182', 'BONOM'] }
@@ -1287,6 +1333,17 @@ Object.keys(FICHAS_NUEVAS).forEach(c => {
   FICHAS[c] = { que: f[0], emisor: f[1], donde: us ? 'BMV, vía SIC (Sistema Internacional de Cotizaciones): compras desde México en pesos.' : 'BMV, a través de una casa de bolsa.',
     gana: us ? 'Plusvalía en dólares más la variación del tipo de cambio (el simulador no modela dividendos).' : 'Plusvalía (el simulador no modela dividendos).', riesgo: f[2], dato: '' };
 });
+const FICHAS_FIBRAS = {
+  FUNO11: ['CBFI de Fibra Uno, la primera y mayor FIBRA de México: portafolio diversificado de oficinas, comercio, industrial y otros inmuebles.', 'Fibra Uno (Fideicomiso F/1401).', 'Ocupación y rentas de sus inmuebles, apalancamiento y sensibilidad a las tasas de interés.'],
+  DANHOS13: ['CBFI de Fibra Danhos: inmuebles premium de oficinas y centros comerciales en la zona metropolitana de la Ciudad de México, con proyectos industriales.', 'Fibra Danhos (Fideicomiso 17416-3).', 'Concentración geográfica, vacancia de oficinas y sensibilidad a las tasas de interés.'],
+  FIBRAPL14: ['CBFI de Fibra Prologis: naves industriales y logística ligadas al comercio exterior y a la relocalización de empresas (nearshoring).', 'Fibra Prologis.', 'Depende del nearshoring y del comercio con EE.UU.; sensibilidad a las tasas de interés.']
+};
+Object.keys(FICHAS_FIBRAS).forEach(c => {
+  const f = FICHAS_FIBRAS[c];
+  FICHAS[c] = { que: f[0], emisor: f[1], donde: 'BMV, a través de una casa de bolsa; se compra como una acción (certificado bursátil fiduciario inmobiliario, CBFI).',
+    gana: 'Distribución trimestral en efectivo (en el simulador, al cierre de las jornadas 3 y 6) más plusvalía. Por ley, una FIBRA debe distribuir al menos 95% de su resultado fiscal.',
+    riesgo: f[2], dato: 'Se valúa como un flujo de rentas: se mueve en sentido contrario a las tasas de interés (si suben, su precio tiende a bajar).' };
+});
 Object.keys(FICHAS).forEach(c => {
   const a = ASSET[c]; if (!a || !esAccion(c)) return;
   const pares = ASSETS.filter(x => x.sector === a.sector && esAccion(x.c) && x.c !== c).map(x => x.c);
@@ -1315,7 +1372,8 @@ const GLOSARIO = [
   ['Orden límite', 'Compra solo si el precio baja hasta tu límite, o vende solo si sube hasta él. Controlas el precio, pero no hay garantía de ejecución.'],
   ['SIC', 'Sistema Internacional de Cotizaciones de la BMV: permite comprar desde México valores listados en el extranjero.'],
   ['Tipo de cambio', 'Pesos que cuesta un dólar. Si sube, tus activos en dólares valen más en pesos.'],
-  ['Jornada', 'Cada una de las 15 sesiones del juego. Una jornada comprime un mes de mercado: los CETES 28 vencen en cada una y el Bono M paga cupón en la 6 y la 12.'],
+  ['Jornada', 'Cada una de las 6 sesiones del juego. Una jornada comprime un mes de mercado: los CETES 28 vencen en cada una, el Bono M paga cupón en la 6 y las FIBRAs distribuyen en efectivo en la 3 y la 6.'],
+  ['FIBRA', 'Fideicomiso de Inversión en Bienes Raíces: posee inmuebles que renta y reparte buena parte de sus rentas cada trimestre. Cotiza en la BMV mediante certificados (CBFI). Se mueve en sentido contrario a las tasas de interés.'],
   ['Sector', 'Grupo de empresas con el mismo motor de negocio (por ejemplo, bancos). Las emisoras de un sector se mueven juntas ante noticias del sector.'],
   ['Concentración sectorial', 'Cuánto de tu portafolio en acciones está en un solo sector. Cinco bancos son una sola apuesta, no cinco.'],
   ['Calidad de ejecución', 'Qué tan bueno fue tu precio frente al precio promedio de la jornada. Positiva si compraste más barato o vendiste más caro que ese promedio.'],
@@ -1404,7 +1462,7 @@ function abrirMes() {
   ap.limites.forEach(h => { if (h.ok) msgs.push('Al abrir se ejecutó tu orden límite de ' + h.orden.lado + ' de ' + num(h.qty, 0) + ' ' + h.orden.c + ' a ' + fmt(h.px) + '.'); });
   if (ap.reinversion) msgs.push('Reinvertiste ' + fmt(ap.reinversion.total) + ' en CETES 28 a ' + num(J.m.tasas.c28) + '%.');
   if (APP.sancionMsg) { msgs.push(APP.sancionMsg); APP.sancionMsg = null; }
-  if (J.n === 1) msgs.unshift('Cada jornada comprime un mes de mercado: los CETES 28 vencen en cada una y el Bono M paga cupón en la 6 y la 12.');
+  if (J.n === 1) msgs.unshift('Cada jornada comprime un mes de mercado: los CETES 28 vencen en cada una, el Bono M paga cupón en la 6 y las FIBRAs distribuyen en efectivo en la 3 y la 6.');
   APP.msgAp = msgs; APP.fase = 'pre'; APP.pausado = false; clearTimeout(APP.tm);
   show('s-juego'); renderJuego();
   if (J.nodo.ev.especial === 'tip') mostrarTip();
@@ -1517,7 +1575,7 @@ function renderMkCtl() {
   if (APP.fase === 'pre') { el.innerHTML = '<div class="premkt"><b>🔔 El mercado todavía no abre</b>Lee la noticia y la señal de la jornada. Cuando toques la campana, los precios abrirán ya ajustados por la noticia.</div>'; return; }
   const M = MERCADOS.find(x => x.id === APP.mk.tab);
   let h = '<div class="mkctl"><div class="tabs" role="tablist" aria-label="Mercado">' + MERCADOS.map(x => '<button role="tab" aria-selected="' + (x.id === M.id) + '" onclick="setMkTab(\'' + x.id + '\')">' + x.n + '</button>').join('') + '</div>';
-  if (M.sec) h += '<label class="sr" for="mk-sector" style="position:absolute;left:-9999px">Sector</label><select id="mk-sector" onchange="setMkSec(\'' + M.id + '\',this.value)" aria-label="Sector">' + M.sec.map(k => '<option value="' + k + '"' + (APP.mk.sec[M.id] === k ? ' selected' : '') + '>' + SECTOR[k].n + ' (5)</option>').join('') + '</select>';
+  if (M.sec) h += '<label class="sr" for="mk-sector" style="position:absolute;left:-9999px">Sector</label><select id="mk-sector" onchange="setMkSec(\'' + M.id + '\',this.value)" aria-label="Sector">' + M.sec.map(k => '<option value="' + k + '"' + (APP.mk.sec[M.id] === k ? ' selected' : '') + '>' + SECTOR[k].n + ' (' + ASSETS.filter(a => a.sector === k && esAccion(a.c)).length + ')</option>').join('') + '</select>';
   h += '<div class="mksum" id="mk-sum"></div></div>';
   el.innerHTML = h;
 }
@@ -1760,6 +1818,7 @@ function cerrarJornada() {
   ops.forEach(o => { flujo[o.c] = (flujo[o.c] || 0) + (o.lado === 'compra' ? -o.total : o.total); });
   out.vencimientos.forEach(v => { flujo[v.c] = (flujo[v.c] || 0) + v.monto; });
   if (out.cupon) flujo.BONOM = (flujo.BONOM || 0) + out.cupon;
+  if (out.distribDet) Object.keys(out.distribDet).forEach(c => { flujo[c] = (flujo[c] || 0) + out.distribDet[c]; });
   const contrib = ASSETS.map(a => ({ c: a.c, d: valorPos(P, J.m, a.c, n) - APP.pos0[a.c] + (flujo[a.c] || 0) }));
   const suma = contrib.reduce((x, y) => x + y.d, 0);
   APP.ultimoEstado = { V0, V1, suma, dif: Math.abs(suma - (V1 - V0)), nOps: ops.length };
@@ -1796,6 +1855,7 @@ function cerrarJornada() {
   out.limites.forEach(hh => { if (hh.ok) ev.push('✓ Se ejecutó tu orden límite de ' + hh.orden.lado + ' de ' + num(hh.qty, 0) + ' ' + hh.orden.c + ' a ' + fmt(hh.px) + (hh.recorte ? ' (ajustada al límite del 20%/40%)' : '') + '.'); else if (hh.vencida) ev.push('○ Venció sin ejecutarse tu orden límite de ' + hh.orden.lado + ' de ' + hh.orden.c + ' a ' + fmt(hh.orden.limite) + ': el precio no llegó a tu nivel (rango de la jornada ' + fmt(res.min[hh.orden.c]) + ' – ' + fmt(res.max[hh.orden.c]) + ').'); else if (hh.cancelada) ev.push('× Se canceló tu orden de ' + hh.orden.c + ': ' + hh.error); });
   out.vencimientos.forEach(v => ev.push('$ Vencieron tus ' + (v.c === 'CETES28' ? 'CETES 28' : 'CETES 182') + ': recibiste ' + fmt(v.monto) + '.' + (v.c === 'CETES28' && P.reinvertir28 && n < CONFIG.NODOS ? ' Se reinvertirán al abrir la próxima jornada.' : '')));
   if (out.cupon) ev.push('$ El Bono M pagó su cupón semestral: ' + fmt(out.cupon) + '.');
+  if (out.distrib) ev.push('$ Tus FIBRAs distribuyeron ' + fmt(out.distrib) + ' en efectivo. Esa distribución es parte de su rendimiento total, junto con el cambio de precio.');
   if (ev.length) h += '<h3 style="font-size:16px;margin:16px 0 4px">Operaciones automáticas</h3>' + ev.map(x => '<p style="margin:6px 0;font-size:15px">' + x + '</p>').join('');
   h += '<div class="concept"><b>Lo que enseña esta jornada</b>' + J.nodo.ev.concepto + '</div>';
   h += '<h3 style="font-size:16px;margin:12px 0 4px">Inversionistas de referencia en la jornada</h3>' + J.refs.map((r, i) => { const d = valorTotal(r, J.m, n) / APP.refsV0[i] - 1; return '<div class="closeline"><span>' + r.nombre + '</span><b class="' + (d >= 0 ? 'up' : 'down') + '">' + pct(d) + '</b></div>'; }).join('');
@@ -1813,7 +1873,7 @@ function resultados() {
   const yo = todos[0].m;
   show('s-res'); $('r-alias').textContent = alias(); $('toast').classList.remove('show');
   renderTape('tape-res', J.m, null);
-  $('r-body').innerHTML = '<div class="res-head"><h1>Tu portafolio terminó en ' + fmt(yo.valorFinal) + '</h1><p class="dim" style="margin-top:10px;font-size:18px">' + pct(yo.R) + ' en 15 jornadas · CETES rindió ' + pct(yo.Rf) + ' en el mismo periodo · tu identificador es <b class="mono">' + alias() + '</b></p></div><p class="dim">Calculando tu percentil de habilidad…</p>';
+  $('r-body').innerHTML = '<div class="res-head"><h1>Tu portafolio terminó en ' + fmt(yo.valorFinal) + '</h1><p class="dim" style="margin-top:10px;font-size:18px">' + pct(yo.R) + ' en ' + CONFIG.NODOS + ' jornadas · CETES rindió ' + pct(yo.Rf) + ' en el mismo periodo · tu identificador es <b class="mono">' + alias() + '</b></p></div><p class="dim">Calculando tu percentil de habilidad…</p>';
   setTimeout(() => {
     let perc = 0; try { perc = percentilHabilidad(P, CONFIG.ALTERNATIVOS, hash32(APP.codigo) % 997); } catch (e) {}
     APP.resultados = { todos, perc };
@@ -1827,7 +1887,7 @@ function pintarResultados() {
   const p1 = R.todos.slice().sort((a, b) => b.m.R - a.m.R);
   const p2 = R.todos.slice().sort((a, b) => b.m.prudente - a.m.prudente);
   const fila = (x, i, score) => '<div class="prow' + (x.yo ? ' me' : '') + (i === 0 ? ' first' : '') + '"><span class="pos">' + (i + 1) + '</span><span class="who"><b>' + (x.yo ? 'Tú (' + alias() + ')' : x.p.nombre) + '</b><small>' + desc[x.p.nombre] + '</small></span><span class="sc">' + score(x.m) + '</span></div>';
-  let h = '<div class="res-head"><h1>Tu portafolio terminó en ' + fmt(yo.valorFinal) + '</h1><p class="dim" style="margin-top:10px;font-size:18px">' + pct(yo.R) + ' en 15 jornadas · CETES rindió ' + pct(yo.Rf) + ' en el mismo periodo · tu identificador es <b class="mono">' + alias() + '</b></p></div>';
+  let h = '<div class="res-head"><h1>Tu portafolio terminó en ' + fmt(yo.valorFinal) + '</h1><p class="dim" style="margin-top:10px;font-size:18px">' + pct(yo.R) + ' en ' + CONFIG.NODOS + ' jornadas · CETES rindió ' + pct(yo.Rf) + ' en el mismo periodo · tu identificador es <b class="mono">' + alias() + '</b></p></div>';
   h += '<div class="podiums"><div class="podium"><h2>🏆 Mayor Crecimiento</h2><p class="rule">Ordena por rendimiento total ①.</p>' + p1.map((x, i) => fila(x, i, m => pct(m.R) + '<small>' + fmt(m.valorFinal) + '</small>')).join('') + '</div>';
   h += '<div class="podium"><h2>🛡️ Inversionista Prudente</h2><p class="rule">Primero hay que superar a CETES ②; entre quienes lo logran, gana quien obtuvo más puntos sobre CETES por cada punto de caída máxima ③.</p>' + p2.map((x, i) => fila(x, i, m => (m.califica ? num(m.indice) : 'No califica') + '<small>' + (m.califica ? num(m.exceso) + ' pts ÷ ' + num(Math.max(m.dd * 100, CONFIG.DD_PISO), 1) : 'no superó a CETES') + '</small>')).join('') + '</div></div>';
   h += '<p class="dim">En el modo Clase, tu docente proyectará el podio con todo el grupo. Busca tu identificador <b class="mono">' + alias() + '</b>.</p>';
@@ -1866,8 +1926,9 @@ function lecciones(m, perc) {
   if (APP.tipResultado === 'sancionado') L.push('Usaste información privilegiada y la CNBV te sancionó con ' + fmt(P.sancion) + '. Fuera del simulador eso puede implicar multas millonarias y responsabilidad penal: la integridad del mercado protege a todos los inversionistas.');
   else if (APP.decisionTip === 'comprar') L.push('Compraste CEMEX por un "dato" de pasillo y la OPA nunca llegó. Los rumores además de ilegales cuando son información privilegiada, suelen ser falsos.');
   if (m.secMax > 0.45 && m.secTop) L.push('Tu sector principal, ' + SECTOR[m.secTop].n + ', pesó en promedio ' + (m.secMax * 100).toFixed(0) + '% de tu portafolio en acciones. Emisoras de un mismo sector reaccionan juntas a las noticias del sector: tener varias no diversifica tanto como parece.');
+  if (P.distrib > 0) L.push('Cobraste ' + fmt(P.distrib) + ' en distribuciones de FIBRAs. Evalúa una FIBRA por su rendimiento total (distribución + cambio de precio), no solo por lo que paga: una distribución alta no compensa una caída del precio, y las tasas altas la golpean.');
   const nVivo = P.ops.filter(o => o.paso > 0 && AUTO.indexOf(o.origen) < 0 && o.origen.indexOf('limite') < 0).length, q = APP.calidad.peso > 0 ? APP.calidad.suma / APP.calidad.peso : 0;
-  if (nVivo >= 15 && q < 0) L.push('Operaste ' + nVivo + ' veces durante las sesiones en vivo y tu precio fue en promedio ' + (Math.abs(q) * 100).toFixed(2) + '% peor que el promedio de cada jornada. Intentar elegir el momento exacto rara vez compensa los costos (Barber, Lee, Liu y Odean, 2014).');
+  if (nVivo >= 6 && q < 0) L.push('Operaste ' + nVivo + ' veces durante las sesiones en vivo y tu precio fue en promedio ' + (Math.abs(q) * 100).toFixed(2) + '% peor que el promedio de cada jornada. Intentar elegir el momento exacto rara vez compensa los costos (Barber, Lee, Liu y Odean, 2014).');
   if (m.R > m.Rf && perc < 45) L.push('Superaste a CETES, pero tu estrategia solo lo logra en ' + perc + '% de los futuros alternativos. Un buen resultado no siempre prueba una buena decisión: separa el proceso del resultado.');
   if (m.dd > 0.15) L.push('Tu caída máxima fue de ' + (m.dd * 100).toFixed(1) + '%. Recuperar una caída de 20% exige subir 25%; por eso controlar las caídas importa tanto como buscar rendimiento.');
   if (m.nef > 0 && m.nef < 3.5) L.push('Tu portafolio equivalió en promedio a ' + m.nef.toFixed(1) + ' activos. Diversificar entre sectores, países y clases de activo reduce el riesgo propio de cada emisora sin sacrificar el rendimiento esperado (Markowitz, 1952).');
@@ -1887,7 +1948,7 @@ function enviarDatos() {
   APP.enviado = true;
   if (!APP.consent) { const e = $('r-envio'); if (e) e.textContent = 'No se enviaron datos (no diste consentimiento).'; return; }
   const J = APP.J, P = J.jugador, m = APP.resultados.todos[0].m;
-  const crisisIdx = [10, 11, 12, 13, 14];
+  const crisisIdx = Array.from({ length: CONFIG.NODOS - CONFIG.CRISIS_N + 1 }, (_, i) => CONFIG.CRISIS_N - 1 + i); // jornadas de la fase de crisis y rebote
   const defens = crisisIdx.map(i => { const w = P.pesos[i] || {}; return (w.CETES28 || 0) + (w.CETES182 || 0) + (w.BONOM || 0) + (w.GLD || 0) + (w.EFECTIVO || 0); });
   const usd = P.pesos.map(w => ASSETS.filter(a => enDolares(a.c)).reduce((x, a) => x + (w[a.c] || 0), 0));
   const maxEm = Math.max(0, ...P.pesos.map(w => Math.max(0, ...ASSETS.filter(a => esAccion(a.c)).map(a => w[a.c] || 0))));
@@ -1900,7 +1961,7 @@ function enviarDatos() {
     n_limite_ejecutadas: P.ops.filter(o => /^limite-(apertura|sesion)/.test(o.origen)).length,
     n_ops_apertura: decs.filter(o => !o.paso && o.origen.indexOf('limite') < 0).length, n_ops_vivo: decs.filter(o => o.paso > 0 && o.origen.indexOf('limite') < 0).length,
     calidad_ejec_pct: APP.calidad.peso > 0 ? +(100 * APP.calidad.suma / APP.calidad.peso).toFixed(3) : 0, ventas_caida_vivo: APP.ventasCaidaVivo, compras_alza_vivo: APP.comprasAlzaVivo, pausas: APP.pausas,
-    sector_max_prom: +(m.secMax * 100).toFixed(1), sector_top: m.secTop || '', n_emisoras_distintas: new Set(P.ops.filter(o => esAccion(o.c)).map(o => o.c)).size, sesion_seg: CONFIG.SESION_SEG,
+    sector_max_prom: +(m.secMax * 100).toFixed(1), sector_top: m.secTop || '', n_emisoras_distintas: new Set(P.ops.filter(o => esAccion(o.c)).map(o => o.c)).size, sesion_seg: CONFIG.SESION_SEG, n_jornadas: CONFIG.NODOS, distrib_fibras: Math.round(P.distrib || 0),
     pct_defensivo_crisis: +(100 * defens.reduce((a, b) => a + b, 0) / defens.length).toFixed(1), ventas_panico: APP.panico,
     pct_max_emisora: +(100 * maxEm).toFixed(1), pct_usd: +(100 * usd.reduce((a, b) => a + b, 0) / Math.max(1, usd.length)).toFixed(1),
     aperturas_ayuda: APP.ayuda, percentil_habilidad: APP.resultados.perc, duracion_seg: Math.round((Date.now() - APP.t0) / 1000), decision_tip: APP.decisionTip
@@ -1916,7 +1977,7 @@ let DOC = null;
 function docenteInicio() {
   show('s-docente');
   let guardado = null; try { guardado = JSON.parse(localStorage.getItem('pdr_docente') || 'null'); } catch (e) {}
-  $('d-body').innerHTML = '<div class="hero" style="padding-top:36px"><h1 style="font-size:clamp(2rem,6vw,3.4rem)">Panel docente</h1><p>Crea una partida y proyecta un solo código: sirve para las 15 jornadas. Todo el grupo juega el mismo mercado, cada alumno a su propio ritmo y tocando su propia campana.</p></div>' +
+  $('d-body').innerHTML = '<div class="hero" style="padding-top:36px"><h1 style="font-size:clamp(2rem,6vw,3.4rem)">Panel docente</h1><p>Crea una partida y proyecta un solo código: sirve para las ' + CONFIG.NODOS + ' jornadas. Todo el grupo juega el mismo mercado, cada alumno a su propio ritmo y tocando su propia campana.</p></div>' +
     '<div class="form-row"><label class="field"><span>Código (vacío = mercado nuevo)</span><input id="d-cod" class="mono" maxlength="7" style="text-transform:uppercase" value="' + (guardado ? guardado.codigo : '') + '"/></label></div>' +
     '<div class="warn" id="d-w"></div><button class="btn" onclick="docenteCrear()">' + (guardado ? 'Continuar la partida' : 'Crear partida') + '</button>' +
     '<p class="dim" style="margin-top:14px;max-width:640px">El código define el mercado completo. Si lo reutilizas con otro grupo, ambos jugarán exactamente el mismo mercado. La sesión en vivo dura ' + CONFIG.SESION_SEG + ' s (agrega ?seg=60 al enlace de los alumnos para cambiarla).</p>';
@@ -1941,7 +2002,7 @@ function docenteRender() {
   const url = location.origin + location.pathname + '?c=' + DOC.codigo;
   let qr = ''; try { const q = qrcode(0, 'M'); q.addData(url); q.make(); qr = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); } catch (e) { qr = '<p class="dim">No se pudo generar el QR.</p>'; }
   let h = '<div class="doc-grid"><div class="qr">' + qr + '</div><div><p class="dim">Código de partida</p><div class="doc-code">' + DOC.codigo + '</div><p class="dim mono" style="word-break:break-all;font-size:14px">' + url + '</p></div></div>';
-  h += '<p style="font-size:17px;max-width:680px">Los alumnos entran con este código y avanzan solos de la jornada 1 a la 15. Para comentar el mercado en clase, usa las noticias de abajo: son las mismas que verá cada alumno al abrir esa jornada.</p>';
+  h += '<p style="font-size:17px;max-width:680px">Los alumnos entran con este código y avanzan solos de la jornada 1 a la ' + CONFIG.NODOS + '. Para comentar el mercado en clase, usa las noticias de abajo: son las mismas que verá cada alumno al abrir esa jornada.</p>';
   if (DOC.mes === 0) h += '<button class="btn" onclick="docenteAvanzar()">Ver la noticia de la jornada 1</button>';
   else {
     h += '<div class="card"><p class="dim">Jornada ' + DOC.mes + ' de ' + CONFIG.NODOS + ' · ' + faseTxt(DOC.mes) + '</p></div>';
